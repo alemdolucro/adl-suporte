@@ -3771,7 +3771,8 @@ Color? disabledTextColor(BuildContext context, bool enabled) {
 }
 
 Widget loadPowered(BuildContext context) {
-  if (bind.mainGetBuildinOption(key: "hide-powered-by-me") == 'Y') {
+  // ADL Suporte: credito ao RustDesk (AGPL-3.0) fica na tela Sobre
+  if (true) {
     return SizedBox.shrink();
   }
   return MouseRegion(

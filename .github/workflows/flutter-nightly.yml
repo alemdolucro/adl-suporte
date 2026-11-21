@@ -13,3 +13,29 @@ jobs:
     with:
       upload-artifact: true
       upload-tag: "nightly"
+
+  renomear-arquivos:
+    needs: run-flutter-nightly-build
+    if: always()
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      REPO: ${{ github.repository }}
+    steps:
+      - name: Renomear instaladores para ADL Suporte
+        run: |
+          set -e
+          assets=$(gh api "repos/$REPO/releases/tags/nightly" -q '.assets[] | "\(.id) \(.name)"')
+          renomear() {
+            origem="$1"; destino="$2"
+            id_origem=$(echo "$assets" | awk -v n="$origem" '$2==n {print $1}')
+            [ -z "$id_origem" ] && { echo "sem $origem"; return 0; }
+            id_destino=$(echo "$assets" | awk -v n="$destino" '$2==n {print $1}')
+            [ -n "$id_destino" ] && gh api -X DELETE "repos/$REPO/releases/assets/$id_destino"
+            gh api -X PATCH "repos/$REPO/releases/assets/$id_origem" -f name="$destino" -q .name
+          }
+          renomear rustdesk-1.5.3-x86_64.exe ADL-Suporte-Windows.exe
+          renomear rustdesk-1.5.3-x86_64.msi ADL-Suporte-Windows.msi
+          renomear rustdesk-1.5.3-aarch64.dmg ADL-Suporte-Mac-chip-M.dmg
+          renomear rustdesk-1.5.3-x86_64.dmg ADL-Suporte-Mac-Intel.dmg
+          renomear rustdesk-1.5.3-aarch64.apk ADL-Suporte-Android.apk
