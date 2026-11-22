@@ -137,8 +137,7 @@ def pagina(msg=""):
         acoes = (
             f'<form method="post"><input type="hidden" name="id" value="{e(i)}">'
             f'<input name="nome" placeholder="Cliente" value="{e(d["nome"])}" style="width:150px">'
-            f'<select name="meses"><option value="12">12 meses</option><option value="6">6 meses</option>'
-            f'<option value="3">3 meses</option><option value="1">1 mês</option></select>'
+            f'<input name="meses" type="number" min="1" max="36" value="12" list="prazos" style="width:70px" title="Meses"> meses'
             f'<button name="acao" value="ativar">{"Renovar" if d["vence"] else "Ativar"}</button></form> '
         )
         if d["vence"]:
@@ -161,10 +160,11 @@ def pagina(msg=""):
 <div class="card"><b>{cont['vencendo']}</b><span>Vencendo em 30 dias</span></div>
 <div class="card"><b>{cont['vencida']}</b><span>Vencidas</span></div>
 <div class="card"><b>{cont['sem']}</b><span>Sem licença</span></div></div>
-<section><h2>Ativar um computador pelo ID</h2>
+<section><h2>Ativar um computador pelo ID</h2><p class="mut" style="margin:-6px 0 10px">Escolha qualquer prazo de 1 a 36 meses (por exemplo 3, 5, 9 ou 12). Na renovação, os meses são somados ao vencimento atual.</p>
 <form method="post"><input name="id" placeholder="ID do computador" required style="width:170px">
 <input name="nome" placeholder="Nome do cliente" required style="width:220px">
-<select name="meses"><option value="12">12 meses</option><option value="6">6 meses</option><option value="3">3 meses</option><option value="1">1 mês</option></select>
+<input name="meses" type="number" min="1" max="36" value="12" list="prazos" style="width:70px" title="Meses"> meses
+<datalist id="prazos"><option value="1"><option value="3"><option value="5"><option value="6"><option value="9"><option value="12"><option value="24"></datalist>
 <button name="acao" value="ativar">Ativar licença</button></form></section>
 <section><h2>Computadores</h2><table><thead><tr><th>ID e cliente</th><th>Origem</th><th>Licença</th><th>Ações</th></tr></thead>
 <tbody>{''.join(linhas) or '<tr><td colspan=4>Nenhum computador registrado ainda.</td></tr>'}</tbody></table></section>
@@ -224,7 +224,8 @@ class Painel(BaseHTTPRequestHandler):
         if not pid.isalnum() or len(pid) > 30:
             msg = "ID inválido."
         elif acao == "ativar":
-            meses = int(g("meses") or 12) if g("meses").isdigit() else 12
+            meses = int(g("meses")) if g("meses").isdigit() else 12
+            meses = max(1, min(meses, 36))
             atual = lic.get(pid, {})
             base = hoje()
             try:
