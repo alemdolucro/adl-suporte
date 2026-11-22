@@ -233,9 +233,9 @@ class _InstallPageBodyState extends State<_InstallPageBody>
                           InkWell(
                             hoverColor: Colors.transparent,
                             onTap: () => launchUrlString(
-                                'https://rustdesk.com/privacy.html'),
+                                'https://github.com/alemdolucro/adl-suporte/blob/main/LICENCE'),
                             child: Tooltip(
-                              message: 'https://rustdesk.com/privacy.html',
+                              message: 'https://github.com/alemdolucro/adl-suporte/blob/main/LICENCE',
                               child: Row(children: [
                                 Icon(Icons.launch_outlined, size: 16)
                                     .marginOnly(right: 5),
@@ -278,7 +278,7 @@ class _InstallPageBodyState extends State<_InstallPageBody>
                     ),
                   ),
                   Offstage(
-                    offstage: bind.installShowRunWithoutInstall(),
+                    offstage: true,
                     child: Obx(
                       () => OutlinedButton.icon(
                         icon: Icon(Icons.screen_share_outlined, size: 16),
