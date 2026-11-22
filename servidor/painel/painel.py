@@ -36,7 +36,7 @@ def ler_licencas():
         with open(ARQ_LIC, encoding="utf-8") as f:
             for linha in f:
                 p = [x.strip() for x in linha.strip().split(";")]
-                if p and p[0]:
+                if p and p[0].isalnum():
                     lic[p[0]] = {"vence": p[1] if len(p) > 1 else "", "nome": p[2] if len(p) > 2 else ""}
     except FileNotFoundError:
         pass
@@ -59,6 +59,8 @@ def ler_computadores():
     try:
         con = sqlite3.connect(f"file:{ARQ_DB}?mode=ro", uri=True, timeout=5)
         for pid, criado, info in con.execute("select id, created_at, info from peer"):
+            if not str(pid).isalnum():
+                continue
             ip = ""
             try:
                 ip = json.loads(info or "{}").get("ip", "")

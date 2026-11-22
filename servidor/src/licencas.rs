@@ -36,6 +36,9 @@ pub fn garantir_teste(id: &str) {
     if std::env::var("ADL_LICENCAS").map(|v| v == "0").unwrap_or(false) {
         return;
     }
+    if id.is_empty() || !id.chars().all(|c| c.is_ascii_alphanumeric()) {
+        return;
+    }
     let vistos = VISTOS.get_or_init(|| Mutex::new(HashSet::new()));
     let mut vistos = match vistos.lock() {
         Ok(v) => v,
