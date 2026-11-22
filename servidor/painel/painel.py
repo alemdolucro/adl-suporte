@@ -22,6 +22,8 @@ ARQ_DB = os.path.join(DADOS, "db_v2.sqlite3")
 USUARIO = os.environ.get("ADL_PAINEL_USUARIO", "esney")
 SENHA = os.environ.get("ADL_PAINEL_SENHA", "")
 PORTA = int(os.environ.get("ADL_PAINEL_PORTA", "8090"))
+BLOQUEADO = "2000-01-01"
+NOME_TESTE = "Periodo de teste"
 
 
 def hoje():
@@ -90,6 +92,8 @@ def situacao(vence):
         d = dt.date.fromisoformat(vence)
     except ValueError:
         return "sem", "Sem licença"
+    if d.year <= 2000:
+        return "bloqueada", "Bloqueada"
     falta = (d - hoje()).days
     if falta < 0:
         return "vencida", f"Vencida em {br(vence)}"
@@ -112,7 +116,7 @@ h2{font-family:Poppins,Inter,sans-serif;font-weight:600;color:#003575;font-size:
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #DCE5F2;vertical-align:middle}
 th{color:#5B6B82;font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.06em}
 .tag{display:inline-block;padding:3px 9px;border-radius:20px;font-size:12px;font-weight:500;white-space:nowrap}
-.ativa{background:#E3F4EC;color:#1E8E5A}.vencendo{background:#FFF4DC;color:#9A6A00}.vencida,.sem{background:#FBE7E3;color:#C2412D}
+.ativa{background:#E3F4EC;color:#1E8E5A}.bloqueada{background:#EEF1F5;color:#5B6B82}.vencendo{background:#FFF4DC;color:#9A6A00}.vencida,.sem{background:#FBE7E3;color:#C2412D}
 form{display:inline-flex;gap:6px;align-items:center;margin:2px 0}
 input,select{border:1px solid #DCE5F2;border-radius:8px;padding:7px 9px;font:inherit;font-size:13px}
 button{border:0;border-radius:8px;padding:7px 12px;font:inherit;font-size:13px;cursor:pointer;background:#0068FF;color:#fff}
@@ -126,27 +130,30 @@ def pagina(msg=""):
     lic = ler_licencas()
     pcs = ler_computadores()
     ids = sorted(set(pcs) | set(lic), key=lambda i: (lic.get(i, {}).get("nome", "~").lower(), i))
-    cont = {"ativa": 0, "vencendo": 0, "vencida": 0, "sem": 0}
+    cont = {"ativa": 0, "vencendo": 0, "vencida": 0, "sem": 0, "bloqueada": 0, "teste": 0}
     linhas = []
     for i in ids:
         d = lic.get(i, {"vence": "", "nome": ""})
         cls, txt = situacao(d["vence"])
-        cont[cls] += 1
+        teste = d["nome"] == NOME_TESTE
+        cont["teste" if teste and cls in ("ativa", "vencendo") else cls] += 1
+        if teste and cls in ("ativa", "vencendo"):
+            txt = txt.replace("Ativa até", "Em teste até").replace("Vence em", "Teste acaba em")
         p = pcs.get(i, {})
         e = html.escape
         acoes = (
             f'<form method="post"><input type="hidden" name="id" value="{e(i)}">'
-            f'<input name="nome" placeholder="Cliente" value="{e(d["nome"])}" style="width:150px">'
+            f'<input name="nome" placeholder="Cliente" value="{"" if teste else e(d["nome"])}" style="width:150px">'
             f'<input name="meses" type="number" min="1" max="36" value="12" list="prazos" style="width:70px" title="Meses"> meses'
-            f'<button name="acao" value="ativar">{"Renovar" if d["vence"] else "Ativar"}</button></form> '
+            f'<button name="acao" value="ativar">{"Renovar" if d["vence"] and not teste and cls != "bloqueada" else "Ativar"}</button></form> '
         )
-        if d["vence"]:
+        if d["vence"] and cls != "bloqueada":
             acoes += (
                 f'<form method="post" onsubmit="return confirm(\'Bloquear {e(i)}?\')">'
                 f'<input type="hidden" name="id" value="{e(i)}"><button class="perigo" name="acao" value="bloquear">Bloquear</button></form>'
             )
         linhas.append(
-            f"<tr><td><span class='id'>{e(i)}</span><br><span class='mut'>{e(d['nome']) or 'sem nome'}</span></td>"
+            f"<tr><td><span class='id'>{e(i)}</span><br><span class='mut'>{'Período de teste' if teste else (e(d['nome']) or 'sem nome')}</span></td>"
             f"<td>{e(p.get('ip', '')) or '-'}<br><span class='mut'>registrado em {br(p.get('criado', ''))}</span></td>"
             f"<td><span class='tag {cls}'>{e(txt)}</span></td><td>{acoes}</td></tr>"
         )
@@ -159,8 +166,9 @@ def pagina(msg=""):
 <div class="cards"><div class="card"><b>{cont['ativa']}</b><span>Licenças ativas</span></div>
 <div class="card"><b>{cont['vencendo']}</b><span>Vencendo em 30 dias</span></div>
 <div class="card"><b>{cont['vencida']}</b><span>Vencidas</span></div>
-<div class="card"><b>{cont['sem']}</b><span>Sem licença</span></div></div>
-<section><h2>Ativar um computador pelo ID</h2><p class="mut" style="margin:-6px 0 10px">Escolha qualquer prazo de 1 a 36 meses (por exemplo 3, 5, 9 ou 12). Na renovação, os meses são somados ao vencimento atual.</p>
+<div class="card"><b>{cont['teste']}</b><span>Em teste (30 dias)</span></div>
+<div class="card"><b>{cont['sem'] + cont['bloqueada']}</b><span>Sem licença ou bloqueados</span></div></div>
+<section><h2>Ativar um computador pelo ID</h2><p class="mut" style="margin:-6px 0 10px">Todo computador novo entra com 30 dias de teste automaticamente. Ao ativar, a licença passa a contar a partir de hoje.</p><p class="mut" style="margin:-6px 0 10px">Escolha qualquer prazo de 1 a 36 meses (por exemplo 3, 5, 9 ou 12). Na renovação, os meses são somados ao vencimento atual.</p>
 <form method="post"><input name="id" placeholder="ID do computador" required style="width:170px">
 <input name="nome" placeholder="Nome do cliente" required style="width:220px">
 <input name="meses" type="number" min="1" max="36" value="12" list="prazos" style="width:70px" title="Meses"> meses
@@ -230,7 +238,7 @@ class Painel(BaseHTTPRequestHandler):
             base = hoje()
             try:
                 v = dt.date.fromisoformat(atual.get("vence", ""))
-                if v > base:
+                if v > base and atual.get("nome") != NOME_TESTE:
                     base = v
             except ValueError:
                 pass
@@ -239,7 +247,8 @@ class Painel(BaseHTTPRequestHandler):
             gravar_licencas(lic)
             msg = f"Licença de {pid} válida até {br(nova.isoformat())}."
         elif acao == "bloquear":
-            lic.pop(pid, None)
+            atual = lic.get(pid, {})
+            lic[pid] = {"vence": BLOQUEADO, "nome": atual.get("nome", "")}
             gravar_licencas(lic)
             msg = f"{pid} bloqueado."
         self.send_response(303)
